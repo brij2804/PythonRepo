@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from src.logger.decorator import log_file
 
 
@@ -22,7 +23,6 @@ def calling_func2():
     logger.warning("warning message from func2")
     logger.error(" error message from func2")
     logger.critical("critical message from func2")
-
 
 def main():
     calling_func1()
