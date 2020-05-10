@@ -1,0 +1,1 @@
+This project contains code for flask restful webservices and mongodb
