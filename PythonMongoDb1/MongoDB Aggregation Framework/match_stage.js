@@ -187,7 +187,7 @@ db.movies.aggregate([
   { $project : { title_array : { $split: ["$title", " "]}}},
   { $project : { title_size : { $size: "$title_array" } } },
   { $match : { title_size : {$eq:1} } } 
-]).itCount();
+]).itcount();
 
 
 
