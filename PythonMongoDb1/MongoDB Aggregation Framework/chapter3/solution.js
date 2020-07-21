@@ -20,118 +20,114 @@ var favorites = [
 		} 
 }
 
+{
+    "$group": {
+      "_id": null,
+      "highest_rating": {
+                            $max: "$imdb.rating"
+                        },
+      "lowest_rating": {
+                            $min:"$imdb.rating"
+                        },
+      "average_rating":{
+                            $avg: "$imdb.rating"
+                       },
+       "deviation": {
+                        $stdDevSamp:"$imdb.rating"
+                    }
+    }
+}
+
 var pipeline = [
 {
-	$match: {
-	      awards:{ 
-		     $in:["Oscars"]
+	$match : {
+		"awards" : {
+			$regex : /Won \d+ Oscar/
 			}
-	}
+		}
+},
+{
+    "$group": {
+      "_id": null,
+      "highest_rating": {
+                            $max: "$imdb.rating"
+                        },
+      "lowest_rating": {
+                            $min:"$imdb.rating"
+                        },
+      "average_rating":{
+                            $avg: "$imdb.rating"
+                       },
+       "deviation": {
+                        $stdDevSamp:"$imdb.rating"
+                    }
+    }
 }
 ];
+
+
 
 db.movies.aggregate(pipeline, { allowDiskUse : true })
 
-
-{ $setIntersection: [ "$cast", favorites ] }
-
-{$size: { $setIntersection: [ "$cast", favorites ] } }
-
-{$addFields:{"num_favs":{$size: { $setIntersection: [ "$cast", favorites ] } }}}
-
-{$sort: {
-	    "num_favs":-1,
-		"tomatoes.viewer.rating" : -1,
-		"title" : -1
-}}
-
-{ $skip : 24 }
-
-var pipeline= [
-        {
-			$match: {
-				  countries:{ $in:["USA"]},
-				  "tomatoes.viewer.rating":{$gte:3},
-				  "cast" : { $exists : true }
-                   }
-	    },
-		{
-			$addFields:{
-				"num_favs":{
-					$size: { 
-						$setIntersection: [ "$cast", favorites ] 
-						   } 
-						   }
-					   }
-		},
-		{
-			$sort: {
-				"num_favs":-1,
-				"tomatoes.viewer.rating" : -1,
-				"title" : -1
-                }
-		},
-		{ $skip : 24 }
-];
-
-var result = db.movies.aggregate(pipeline, { allowDiskUse : true }).next().title;
-print("Result: " + result);
-
-var pipeline=[
+----------------------------------------
+var pipeline = [
 {
-	$match:{
-		"languages" : "English",
-		"imdb.rating":{
-			$gte:1			
-		},
-		"imdb.votes":{
-			$gte:1
-		},
-		"year":{
-			$gte:1990
-		}
-	}
+    $unwind: "$cast"
 },
 {
-	$addFields:{
-		"scaled_votes":{
-			$add: [
-			  1,
-			  {
-				$multiply: [
-				  9,
-				  {
-					$divide: [
-					  { $subtract: ["$imdb.votes", 5] },
-					  { $subtract: [1521105, 5] }
-					]
-				  }
-				]
-			  }
-			]
-		  }
-	}
-},
-{
-	$addFields:{
-		"normalized_rating":{$avg:["$scaled_votes","$imdb.rating"]}
-	}
-},
-{
-	$sort:{
-		"normalized_rating":1
-	}
-}
+    $group: {
+      "_id": {
+        "cast": "$cast"
+      },
+      "average_rating": { $avg: "$imdb.rating" },
+      "count": { "$sum": 1 }
+    }
+  },
+  {
+    $sort: { "count": -1 }
+  }
 ];
 
 
+db.movies.aggregate(pipeline, { allowDiskUse : true })
 
+{ "_id" : { "cast" : "John Wayne" }, "average_rating" : 6.424299065420561, "count" : 107 }
+{ "_id" : "John Wayne", "numFilms" : 107, "average" : 6.4 }
 
-
-
-
-
-
+db.movies.aggregate([
+  {
+    $match: {
+      languages: "English"
+    }
+  },
+  {
+    $project: { _id: 0, cast: 1, "imdb.rating": 1 }
+  },
+  {
+    $unwind: "$cast"
+  },
+  {
+    $group: {
+      _id: "$cast",
+      numFilms: { $sum: 1 },
+      average: { $avg: "$imdb.rating" }
+    }
+  },
+  {
+    $project: {
+      numFilms: 1,
+      average: {
+        $divide: [{ $trunc: { $multiply: ["$average", 10] } }, 10]
+      }
+    }
+  },
+  {
+    $sort: { numFilms: -1 }
+  },
+  {
+    $limit: 1
+  }
+])
 
 
 
